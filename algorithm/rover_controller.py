@@ -23,7 +23,7 @@ class rover_controller(object):
             target_pos: 发现的目标的二维坐标，维度n*2的list，n为发现的目标个数
                         当done为True时输出该list，当done为False时输出[]
         """
-        motor_velocity = [1, 1, 1, 1]
+        motor_velocity = [0.5, 1, 0.5, 1]
         done = False
         target_pos = [[1, 2],
                       [3, 4],
