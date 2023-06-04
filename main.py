@@ -1,12 +1,14 @@
 """
 @author: 15201622364
 """
+import keyboard
 
 from controller import Camera, RangeFinder, Supervisor
 from algorithm.rover_controller import rover_controller
 from algorithm import slam
 import numpy as np
 import cv2
+import open3d as o3d
 
 if __name__ == "__main__":
     sup = Supervisor()
@@ -31,8 +33,8 @@ if __name__ == "__main__":
     cam_f.enable(30)  # 初始化
     cam_b.enable(30)
 
-    dep_f = RangeFinder('depth_b')  # 连接前相机D
-    dep_b = RangeFinder('depth_f')
+    dep_f = RangeFinder('depth_f')  # 连接前相机D
+    dep_b = RangeFinder('depth_b')
     dep_f.enable(30)  # 初始化
     dep_b.enable(30)
 
@@ -45,6 +47,10 @@ if __name__ == "__main__":
     world_time = 0
     done = False
 
+    """jinz"""
+    point_cloud = o3d.geometry.PointCloud()
+    camera_position = np.array([0, 0, 0])  # 替换为实际的初始化坐标
+    camera_position = np.reshape(camera_position, (3, 1))
     while not done:
 
         """获取RGBD数据"""
@@ -54,9 +60,22 @@ if __name__ == "__main__":
         d_image_b = dep_b.getRangeImageArray()
 
         """jinz"""
-        slam.get_image_from_camera(cam_f)
+        relative_position = slam.slam_pose(cam_f)
+        if relative_position is not None:
+            # 将相对位置转换为NumPy数组
+            relative_position = (np.asarray(relative_position))
+            print("relative_position:")
+            print(relative_position)  # 计算相机位置相对于初始化坐标的坐标
+            camera_position = camera_position + relative_position
+            print("Camera position relative to initial coordinate:")
+            print(camera_position)
+            # 将相机位置作为点添加到点云中
+            point_cloud.points.append(camera_position)
+            # o3d.visualization.draw_geometries([point_cloud])
+        else:
+            print("Invalid relative position")
 
-        cv2.waitKey(100)
+        key=cv2.waitKey(10)
 
         """决策主程序"""
         motor_velocity, done, target_pos = con.step(rgb_image_f, rgb_image_b, d_image_f, d_image_b, world_time)
@@ -72,3 +91,9 @@ if __name__ == "__main__":
         for _ in range(30):
             sup.step(32)
             world_time += 32  # 32ms
+        if keyboard.is_pressed(17):
+            break
+
+        if key & 0xFF == ord('q'):
+            break
+    o3d.visualization.draw_geometries([point_cloud])
